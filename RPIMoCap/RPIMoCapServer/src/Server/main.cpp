@@ -15,9 +15,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "RPIMoCap/Server/mainwindow.h"
-#include "RPIMoCap/Server/rpimocapserver.h"
-#include "RPIMoCap/Server/calibrationwidget.h"
+#include "Server/mainwindow.h"
+#include "Server/rpimocapserver.h"
+#include "Server/calibrationwidget.h"
+#include "Server/floorcalibrationwidget.h"
 
 #include <QApplication>
 #include <QtWidgets/QApplication>
@@ -41,7 +42,10 @@ int main(int argc, char *argv[])
 
     QObject::connect(&w, &RPIMoCap::MainWindow::searchForCameras, &server, &RPIMoCap::Server::init);
     QObject::connect(&w,&RPIMoCap::MainWindow::startMoCap, &server, &RPIMoCap::Server::onMoCapStart);
-    QObject::connect(w.calibrationWidget(),&RPIMoCap::CalibrationWidget::startCalibration, &server, &RPIMoCap::Server::onCalibStart);
+    QObject::connect(w.calibrationWidget(),&RPIMoCap::CalibrationWidget::startCalibration,
+                     &server, &RPIMoCap::Server::onCalibStart);
+    QObject::connect(w.floorCalibration(), &RPIMoCap::FloorCalibrationWidget::snapshotRequest,
+                     &server, &RPIMoCap::Server::calibrateFloor);
     QObject::connect(&server, &RPIMoCap::Server::cameraAdded, &w, &RPIMoCap::MainWindow::addCamera);
     QObject::connect(&server, &RPIMoCap::Server::cameraRemoved, &w, &RPIMoCap::MainWindow::removeCamera);
     QObject::connect(&server, &RPIMoCap::Server::frameReady, &w, &RPIMoCap::MainWindow::drawFrame);

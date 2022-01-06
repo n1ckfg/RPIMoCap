@@ -57,10 +57,10 @@ void Marker::setMarker(const Frame::Marker marker)
     sphereTransform->setTranslation({marker.position.x(),marker.position.y(),marker.position.z()});
 }
 
-Line::Line(const Frame::LineSegment &line, Qt3DCore::QEntity *rootEntity)
+Line::Line(const Line3D &line, float lengthcm, Qt3DCore::QEntity *rootEntity)
 {
     buf = new Qt3DRender::QBuffer(geometry);
-    setLine3D(line);
+    setLine3D(line, lengthcm);
 
     auto *positionAttribute = new Qt3DRender::QAttribute(geometry);
     positionAttribute->setName(Qt3DRender::QAttribute::defaultPositionAttributeName());
@@ -99,20 +99,42 @@ Line::Line(const Frame::LineSegment &line, Qt3DCore::QEntity *rootEntity)
     entity->setParent(rootEntity);
 }
 
-void Line::setLine3D(const Frame::LineSegment &line)
+void Line::setLine3D(const Line3D &line, const float lengthcm)
 {
     bufferBytes.resize(3 * 2 * sizeof(float)); // start.x, start.y, start.end + end.x, end.y, end.z
     float *positions = reinterpret_cast<float*>(bufferBytes.data());
-    *positions++ = line.line.origin().x();
-    *positions++ = line.line.origin().y();
-    *positions++ = line.line.origin().z();
+    *positions++ = line.origin().x();
+    *positions++ = line.origin().y();
+    *positions++ = line.origin().z();
 
-    const auto end = line.line.origin() + line.lengthcm * line.line.direction();
+    const auto end = line.origin() + lengthcm * line.direction();
     *positions++ = end.x();
     *positions++ = end.y();
     *positions++ = end.z();
 
     buf->setData(bufferBytes);
+}
+
+FloorPlane::FloorPlane(Qt3DCore::QEntity *rootEntity) {
+    entity->addComponent(transform);
+    entity->addComponent(mesh);
+    entity->addComponent(material);
+    entity->setParent(rootEntity);
+
+    material->setDiffuse(QColor(QRgb(0xe3e3e3)));
+    material->setShininess(0.0f);
+
+    setSize(500.0f);
+    setFloorPosition(-10.0f);
+}
+
+void FloorPlane::setSize(const float sizeCM) {
+    mesh->setHeight(sizeCM);
+    mesh->setWidth(sizeCM);
+}
+
+void FloorPlane::setFloorPosition(const float posY) {
+    transform->setTranslation({0.0, 0.0, posY});
 }
 
 }

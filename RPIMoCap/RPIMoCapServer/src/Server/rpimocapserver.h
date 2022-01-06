@@ -17,51 +17,44 @@
 
 #pragma once
 
+#include "linesaggregator.h"
 #include "camerasettings.h"
-#include "camerasettingswidget.h"
 
-#include <RPIMoCap/Core/frame.h>
+#include <RPIMoCap/Core/mqttpublisher.h>
 
-#include <QMainWindow>
-#include <QVector>
+#include <QObject>
 
-namespace Ui {
-class MainWindow;
-}
+#include <memory>
 
 namespace RPIMoCap {
 
-class CalibrationWidget;
-
-class MainWindow : public QMainWindow
+class Server : public QObject
 {
     Q_OBJECT
-
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
-
-    CalibrationWidget* calibrationWidget() {return m_calibWidget;};
+    explicit Server(QObject *parent = nullptr);
+    ~Server() override = default;
 
 signals:
-    void startMoCap(bool start);
-    void searchForCameras();
+    void cameraAdded(const std::shared_ptr<CameraSettings> &settings);
+    void cameraRemoved(QUuid id);
+    void frameReady(const Frame &frame);
 
 public slots:
-    void addCamera(const std::shared_ptr<CameraSettings> &camera);
-    void updateCamera();
-    void removeCamera(const QUuid id);
-    void drawFrame(const RPIMoCap::Frame &frame);
+    void init();
+    void onCalibStart(bool start, WandCalibration::Settings settings);
+    void onMoCapStart(bool start);
+    void trigger();
 
-private slots:
-    void on_MoCapButton_clicked(bool checked);
+    void calibrateFloor(const float offset);
 
 private:
-    Ui::MainWindow *ui;
+    LinesAggregator m_aggregator;
 
-    CalibrationWidget *m_calibWidget = nullptr;
+    void setupMQTT(const RPIMoCap::MQTTSettings &settings);
+    std::unique_ptr<RPIMoCap::MQTTPublisher<std::string>> m_triggerPub;
 
-    QMap<QUuid, CameraSettingsWidget*> m_cameraWidgets;
+    QMap<QUuid,std::shared_ptr<CameraSettings>> m_clients;
 };
 
 }

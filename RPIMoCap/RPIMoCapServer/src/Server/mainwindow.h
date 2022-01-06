@@ -17,45 +17,54 @@
 
 #pragma once
 
-#include "RPIMoCap/primitives.h"
+#include "camerasettings.h"
+#include "camerasettingswidget.h"
 
 #include <RPIMoCap/Core/frame.h>
 
-#include <QWidget>
-#include <Qt3DRender/QGeometryRenderer>
+#include <QMainWindow>
+#include <QVector>
 
 namespace Ui {
-class MocapScene3D;
+class MainWindow;
 }
 
-namespace RPIMoCap::Visualization {
+namespace RPIMoCap {
 
-class MocapScene3D : public QWidget
+class CalibrationWidget;
+class FloorCalibrationWidget;
+
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MocapScene3D(QWidget *parent = nullptr);
-    ~MocapScene3D();
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+    CalibrationWidget* calibrationWidget() {return m_calibWidget;};
+    FloorCalibrationWidget* floorCalibration() {return m_floorCalibWidget;};
+
+signals:
+    void startMoCap(bool start);
+    void searchForCameras();
 
 public slots:
-    void addCamera(const QUuid id, const Eigen::Affine3f &transform);
-    void updateCamera(const QUuid id, const Eigen::Affine3f &transform);
+    void addCamera(const std::shared_ptr<CameraSettings> &camera);
+    void updateCamera();
     void removeCamera(const QUuid id);
-
     void drawFrame(const RPIMoCap::Frame &frame);
 
+private slots:
+    void on_MoCapButton_clicked(bool checked);
+
 private:
-    Ui::MocapScene3D *ui = nullptr;
+    Ui::MainWindow *ui;
 
-    Qt3DCore::QEntity *m_rootEntity = new Qt3DCore::QEntity();
+    CalibrationWidget *m_calibWidget = nullptr;
+    FloorCalibrationWidget *m_floorCalibWidget = nullptr;
 
-    std::vector<Marker*> m_currentMarkers;
-    std::vector<Line*> m_allLines;
-
-    QHash<QUuid,std::shared_ptr<Camera>> m_currentCameras;
-
-    FloorPlane* m_floor = nullptr;
+    QMap<QUuid, CameraSettingsWidget*> m_cameraWidgets;
 };
 
 }

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <RPIMoCap/Server/wanddetector.h>
+#include "Server/wanddetector.h"
 #include <RPIMoCap/Core/cameraparams.h>
 
 #include <opencv2/core/affine.hpp>
@@ -49,4 +49,85 @@ TEST(wanddetector, 3Psimple)
     {
         EXPECT_EQ(detectedPixels[i], pixels[i]);
     }
+}
+
+TEST(wanddetector, CrossSimple)
+{
+    std::vector<cv::Point3f> wandPoints;
+    wandPoints.push_back({0.0f,0.0f,0.0f}); // Center
+    wandPoints.push_back({1.0f,0.0f,0.0f});
+    wandPoints.push_back({0.0f,1.0f,0.0f});
+    wandPoints.push_back({-1.0f,0.0f,0.0f});
+    wandPoints.push_back({0.0f,-1.0f,0.0f});
+
+    cv::Vec3f rVec(0.0f, 0.0f, 0.0f);
+    cv::Vec3f tVec(0.0f, 0.0, 200.0f);
+
+    for (size_t i = 0; i < wandPoints.size(); ++i)
+    {
+        wandPoints[i] = cv::Affine3f(rVec, tVec) * wandPoints[i];
+    }
+
+    std::vector<cv::Point2f> pixels;
+    cv::projectPoints(wandPoints, cv::Vec3f::zeros(), cv::Vec3f::zeros(),
+                      v1params.cameraMatrix, v1params.distortionCoeffs, pixels);
+
+    auto detection = WandDetector::detectCrossCenter(pixels, 5.0f);
+
+    EXPECT_TRUE(detection.has_value());
+    EXPECT_EQ(detection->centerPoint, pixels[0]);
+}
+
+TEST(wanddetector, CrossNoise)
+{
+    std::vector<cv::Point3f> wandPoints;
+    wandPoints.push_back({0.0f,0.0f,0.0f}); // Center
+    wandPoints.push_back({1.0f,-0.1f,0.0f});
+    wandPoints.push_back({0.0f,0.9f,0.0f});
+    wandPoints.push_back({-1.1f,0.0f,0.0f});
+    wandPoints.push_back({0.0f,-1.2f,0.0f});
+
+    cv::Vec3f rVec(0.0f, 0.0f, 0.0f);
+    cv::Vec3f tVec(0.0f, 0.0, 200.0f);
+
+    for (size_t i = 0; i < wandPoints.size(); ++i)
+    {
+        wandPoints[i] = cv::Affine3f(rVec, tVec) * wandPoints[i];
+    }
+
+    std::vector<cv::Point2f> pixels;
+    cv::projectPoints(wandPoints, cv::Vec3f::zeros(), cv::Vec3f::zeros(),
+                      v1params.cameraMatrix, v1params.distortionCoeffs, pixels);
+
+    auto detection = WandDetector::detectCrossCenter(pixels, 10.0f);
+
+    EXPECT_TRUE(detection.has_value());
+    EXPECT_EQ(detection->centerPoint, pixels[0]);
+}
+
+TEST(wanddetector, CrossNoiseShift)
+{
+    std::vector<cv::Point3f> wandPoints;
+    wandPoints.push_back({0.0f,0.0f,-10.0f}); // Center
+    wandPoints.push_back({1.0f,-0.1f,-10.0f});
+    wandPoints.push_back({0.0f,0.9f,-10.0f});
+    wandPoints.push_back({-1.1f,0.0f,-10.0f});
+    wandPoints.push_back({0.0f,-1.2f,-10.0f});
+
+    cv::Vec3f rVec(0.0f, 0.0f, 0.0f);
+    cv::Vec3f tVec(0.0f, 0.0, 200.0f);
+
+    for (size_t i = 0; i < wandPoints.size(); ++i)
+    {
+        wandPoints[i] = cv::Affine3f(rVec, tVec) * wandPoints[i];
+    }
+
+    std::vector<cv::Point2f> pixels;
+    cv::projectPoints(wandPoints, cv::Vec3f::zeros(), cv::Vec3f::zeros(),
+                      v1params.cameraMatrix, v1params.distortionCoeffs, pixels);
+
+    auto detection = WandDetector::detectCrossCenter(pixels, 10.0f);
+
+    EXPECT_TRUE(detection.has_value());
+    EXPECT_EQ(detection->centerPoint, pixels[0]);
 }

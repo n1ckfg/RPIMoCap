@@ -57,9 +57,9 @@ public:
 
 struct Line
 {
-    Line(const RPIMoCap::Frame::LineSegment &line, Qt3DCore::QEntity *rootEntity);
+    Line(const RPIMoCap::Line3D &line, float lengthcm, Qt3DCore::QEntity *rootEntity);
 
-    void setLine3D(const RPIMoCap::Frame::LineSegment &line);
+    void setLine3D(const RPIMoCap::Line3D &line, const float lengthcm);
 
     SharedEntity entity = SharedEntity(new Qt3DCore::QEntity(), &QObject::deleteLater);
     Qt3DRender::QGeometry *geometry = new Qt3DRender::QGeometry();
@@ -67,6 +67,22 @@ struct Line
     Qt3DRender::QGeometryRenderer *renderer = new Qt3DRender::QGeometryRenderer();
     Qt3DRender::QBuffer *buf;
     QByteArray bufferBytes;
+};
+
+class FloorPlane
+{
+public:
+    FloorPlane(Qt3DCore::QEntity *rootEntity);
+
+    void setSize(const float sizeCM);
+
+    void setFloorPosition(const float posY);
+
+private:
+    SharedEntity entity = SharedEntity(new Qt3DCore::QEntity(), &QObject::deleteLater);
+    Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
+    Qt3DExtras::QPlaneMesh *mesh = new Qt3DExtras::QPlaneMesh();
+    Qt3DExtras::QPhongMaterial *material = new Qt3DExtras::QPhongMaterial();
 };
 
 }

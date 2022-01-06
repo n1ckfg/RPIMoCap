@@ -25,6 +25,7 @@
 
 #include <Qt3DExtras/Qt3DWindow>
 #include <Qt3DExtras/QFirstPersonCameraController>
+#include <Qt3DExtras/QPlaneMesh>
 #include <Qt3DExtras>
 
 namespace RPIMoCap::Visualization {
@@ -43,9 +44,9 @@ MocapScene3D::MocapScene3D(QWidget *parent) :
     ui->verticalLayout->addWidget(QWidget::createWindowContainer(view));
 
     Qt3DRender::QCamera *cameraEntity = view->camera();
-    cameraEntity->lens()->setPerspectiveProjection(60.0f, 16.0f/9.0f, 0.1f, 2000.0f);
+    cameraEntity->lens()->setPerspectiveProjection(90.0f, 16.0f/9.0f, 0.1f, 2000.0f);
     cameraEntity->setPosition(QVector3D(400, 400, 400));
-    cameraEntity->setUpVector(QVector3D(0, -1, 0));
+    cameraEntity->setUpVector(QVector3D(0, 1, 0));
     cameraEntity->setViewCenter(QVector3D(0, 0, 0));
 
     Qt3DCore::QEntity *lightEntity = new Qt3DCore::QEntity(m_rootEntity);
@@ -56,19 +57,26 @@ MocapScene3D::MocapScene3D(QWidget *parent) :
     Qt3DCore::QTransform *lightTransform = new Qt3DCore::QTransform(lightEntity);
     lightTransform->setTranslation(cameraEntity->position());
     lightEntity->addComponent(lightTransform);
-    Qt3DExtras::QAbstractCameraController *camController = new Qt3DExtras::QOrbitCameraController(m_rootEntity);
+    Qt3DExtras::QOrbitCameraController *camController = new Qt3DExtras::QOrbitCameraController(m_rootEntity);
+    camController->setZoomInLimit(20.0f);
     camController->setCamera(cameraEntity);
-    camController->setLinearSpeed(50);
+    camController->setLinearSpeed(1500);
 
     for (size_t i = 0; i < 200; ++i)
     {
-        m_allLines.push_back(new Line(Frame::LineSegment(), m_rootEntity));
+        auto line = new Line(Line3D(), 100, m_rootEntity);
+        m_allLines.push_back(line);
+        line->entity->setEnabled(false);
     }
 
     for (size_t i = 0; i < 200; ++i)
     {
-        m_currentMarkers.push_back(new Marker({0, Eigen::Vector3f()}, m_rootEntity));
+        auto marker = new Marker({0, {}, Eigen::Vector3f()}, m_rootEntity);
+        m_currentMarkers.push_back(marker);
+        marker->entity->setEnabled(false);
     }
+
+    m_floor = new FloorPlane(m_rootEntity);
 
     view->setRootEntity(m_rootEntity);
 }
@@ -97,13 +105,18 @@ void MocapScene3D::drawFrame(const RPIMoCap::Frame &frame)
 {
     //TODO resize m_allLines and m_currentMarkers if needed
 
-    for (size_t i = 0; i < frame.lines().size(); ++i)
-    {
-        m_allLines[i]->setLine3D(frame.lines()[i]);
-        m_allLines[i]->entity->setEnabled(true);
+    size_t lineCounter = 0;
+
+    for (const auto&obs : frame.observations()) {
+        for (size_t i = 0; i < obs.second.size(); ++i)
+        {
+            m_allLines[lineCounter]->setLine3D(obs.second[i].ray, 300); // TODO get length from marker
+            m_allLines[lineCounter]->entity->setEnabled(true);
+            ++lineCounter;
+        }
     }
 
-    for (size_t i = frame.lines().size(); i < m_allLines.size(); ++i)
+    for (size_t i = lineCounter + 1; i < m_allLines.size(); ++i)
     {
         m_allLines[i]->entity->setEnabled(false);
     }

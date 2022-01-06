@@ -37,7 +37,10 @@ MainWindow::MainWindow(SimScene &scene, QWidget *parent) :
 {
     m_ui->setupUi(this);
 
-    connect(m_ui->wandExtrinsic, &Visualization::ExtrinsicWidget::transformChanged, this, &MainWindow::updateWandTransform);
+    connect(m_ui->wandExtrinsic, &Visualization::ExtrinsicWidget::transformChanged, this, &MainWindow::drawFrame);
+    connect(m_ui->floorCross, &Visualization::ExtrinsicWidget::transformChanged, this, &MainWindow::drawFrame);
+    connect(m_ui->showWandExtrinsic, &QCheckBox::stateChanged, this, &MainWindow::drawFrame);
+    connect(m_ui->showFloorCross, &QCheckBox::stateChanged, this, &MainWindow::drawFrame);
 
     m_ui->scrollAreaWidgetContents->setLayout(new QVBoxLayout);
 
@@ -52,27 +55,7 @@ MainWindow::~MainWindow()
     delete m_ui;
 }
 
-void MainWindow::updateWandTransform(Eigen::Affine3f transform)
-{
-    const VirtualWand wand(50.0, 10.0);
-
-    auto markers = wand.markers(transform);
-    m_scene.setMarkers(markers);
-
-    std::vector<Frame::Marker> frameMarkers;
-
-    for (auto &marker : markers)
-    {
-        frameMarkers.push_back({0,{marker.translation.x, marker.translation.y, marker.translation.z}});
-    }
-
-    Frame frame(std::chrono::high_resolution_clock::now(), {});
-    frame.setMarkers(frameMarkers);
-
-    m_ui->scene->drawFrame(frame);
-}
-
-void MainWindow::onRotationChanged(QUuid clientId, cv::Vec3f rVec)
+void MainWindow::onRotationChanged(QUuid clientId, Eigen::Vector3d rVec)
 {
     auto it = std::find_if(m_clients.begin(), m_clients.end(),
                            [&clientId](ClientData &c){return c.id == clientId;});
@@ -87,7 +70,7 @@ void MainWindow::onRotationChanged(QUuid clientId, cv::Vec3f rVec)
     }
 }
 
-void MainWindow::onTranslationChanged(QUuid clientId, cv::Vec3f tVec)
+void MainWindow::onTranslationChanged(QUuid clientId, Eigen::Vector3d tVec)
 {
     auto it = std::find_if(m_clients.begin(), m_clients.end(),
                            [&clientId](ClientData &c){return c.id == clientId;});
@@ -144,8 +127,8 @@ void MainWindow::openProject()
         QUuid id = QUuid::fromString(map["id"].toString());
         auto params = Camera::Intrinsics::fromVariantMap(map);
 
-        cv::Vec3f rVec(map["rx"].toFloat(), map["ry"].toFloat(), map["rz"].toFloat());
-        cv::Vec3f tVec(map["tx"].toFloat(), map["ty"].toFloat(), map["tz"].toFloat());
+        Eigen::Vector3d rVec(map["rx"].toDouble(), map["ry"].toDouble(), map["rz"].toDouble());
+        Eigen::Vector3d tVec(map["tx"].toDouble(), map["ty"].toDouble(), map["tz"].toDouble());
         addClient(id, params, rVec, tVec);
     }
 
@@ -166,7 +149,7 @@ void MainWindow::saveProject()
 
     QVariantMap saveMap;
     QVariantList clientList;
-    for (auto data : m_clients)
+    for (const auto& data : m_clients)
     {
         QVariantMap clientMap = data.camera->getParams().toVariantMap();
         clientMap["id"] = data.id.toString();
@@ -201,7 +184,7 @@ void MainWindow::createClient()
 {
     RPIMoCap::Camera::Intrinsics params = RPIMoCap::Camera::Intrinsics::computeRPICameraV1Params();
     QUuid id = QUuid::createUuid();
-    addClient(id, params, cv::Vec3f(0.0f, 0.0f, 0.0f), cv::Vec3f(0.0f, 0.0f, 0.0f));
+    addClient(id, params, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 }
 
 void MainWindow::removeClient()
@@ -227,7 +210,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 }
 
 void MainWindow::addClient(const QUuid &id, const Camera::Intrinsics &params,
-                           const cv::Vec3f &rVec, const cv::Vec3f &tVec)
+                           const Eigen::Vector3d &rVec, const Eigen::Vector3d &tVec)
 {
     auto camera = std::make_shared<SimCamera>(params, m_scene);
 
@@ -260,6 +243,36 @@ void MainWindow::clearClients()
     {
         removeClient();
     }
+}
+
+void MainWindow::drawFrame()
+{
+    std::vector<SimMarker> markers;
+
+    if (m_ui->showWandExtrinsic->isChecked()) {
+        const VirtualExtrinsicWand wand(50.0, 10.0);
+        auto wandMarkers = wand.markers(m_ui->wandExtrinsic->getTransform());
+        markers.insert(markers.end(), wandMarkers.begin(), wandMarkers.end());
+    }
+
+    if (m_ui->showFloorCross->isChecked()) {
+        const VirtualFloorWand wand(30.0);
+        auto wandMarkers = wand.markers(m_ui->floorCross->getTransform());
+        markers.insert(markers.end(), wandMarkers.begin(), wandMarkers.end());
+    }
+
+    m_scene.setMarkers(markers);
+
+    std::vector<Frame::Marker> frameMarkers;
+    for (auto &marker : markers)
+    {
+        frameMarkers.push_back({0, {}, {marker.translation.x, marker.translation.y, marker.translation.z}});
+    }
+
+    Frame frame(std::chrono::high_resolution_clock::now(), {});
+    frame.setMarkers(frameMarkers);
+
+    m_ui->scene->drawFrame(frame);
 }
 
 }

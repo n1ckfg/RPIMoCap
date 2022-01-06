@@ -27,4 +27,36 @@ class WandDetector
 public:
     static std::optional<std::vector<cv::Point2f>> detect4pWand(const std::vector<cv::Point2f> &pts);
     static std::optional<std::vector<cv::Point2f>> detect3pWand(const std::vector<cv::Point2f> &pts);
+
+
+    struct CrossDetection {
+        size_t centerPointID;
+        cv::Point2f centerPoint;
+        std::vector<size_t> edgePointIDs;
+        std::vector<cv::Point2f> edgePoints;
+    };
+
+    /**
+     * @brief Detects center point on cross calibration wand
+     * @param pts Required size - 5
+     * @param epsilonDeg
+     * @return CrossDetection with separated center point
+     */
+    static std::optional<CrossDetection> detectCrossCenter(const std::vector<cv::Point2f> &pts, const float epsilonDeg);
+
+
+private:
+    /**
+     * @brief Given three collinear points p, q, r, the function checks if
+     *        point q lies on line segment 'pr'
+     * @param p
+     * @param q
+     * @param r
+     * @return
+     */
+    static bool isOnSegment(cv::Point2f p, cv::Point2f q, cv::Point2f r);
+
+    static bool areCollinear(cv::Point2f pnt1, cv::Point2f pnt2, cv::Point2f pnt3, float epsilonDeg);
+
+    static float angle2D(cv::Point2f v1, cv::Point2f v2);
 };
